@@ -4,19 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ኬር ቢንጎ መጫወቻ</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body { font-family: Arial, sans-serif; text-align: center; background-color: #1a1a2e; color: white; padding: 10px; margin: 0; }
         h1 { color: #e94560; font-size: 22px; margin-top: 15px; }
         .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; max-width: 340px; margin: 15px auto; padding: 5px; }
         .header { background-color: #e94560; font-weight: bold; padding: 10px 0; border-radius: 4px; font-size: 16px; }
-        .cell { background-color: #16213e; border: 2px solid #0f3460; padding: 15px 0; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 4px; }
+        .cell { background-color: #16213e; border: 2px solid #0f3460; padding: 15px 0; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 4px; user-select: none; }
         .cell.active { background-color: #00e676; color: black; border-color: #00e676; }
         .btn { background-color: #ff9800; color: white; border: none; padding: 12px; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; width: 85%; max-width: 300px; margin-top: 15px; }
+        .user-info { font-size: 14px; color: #00e676; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
     <h1>🎰 ኬር ቢንጎ (Ker Bingo) 🎰</h1>
+    <div class="user-info" id="user-display">በመጫን ላይ...</div>
     <p style="font-size: 14px; color: #ccc;">የወጡትን ቁጥሮች እየነኩ ይሰርዙ</p>
 
     <div class="grid" id="bingo-board">
@@ -26,9 +29,22 @@
     <button class="btn" onclick="claimBingo()">🏆 ቢንጎ (BINGO)!</button>
 
     <script>
+        // የቴሌግራም ዌብአፕ መረጃን ማንበብ
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // ገጹን ሙሉ ማድረግ
+
+        const user = tg.initDataUnsafe?.user;
+        if (user) {
+            document.getElementById('user-display').innerText = `ተጫዋች: ${user.first_name} (ID: ${user.id})`;
+        } else {
+            document.getElementById('user-display').innerText = `የሙከራ ገጽ`;
+        }
+
         const ranges = [[1,15], [16,30], [31,45], [46,60], [61,75]];
         const board = document.getElementById('bingo-board');
+        let cardNumbers = [];
 
+        // 5x5 ካርቴላ ማመንጨት
         for (let r = 0; r < 5; r++) {
             for (let c = 0; c < 5; c++) {
                 let cell = document.createElement('div');
@@ -37,11 +53,17 @@
                 if (r === 2 && c === 2) {
                     cell.innerText = "FREE";
                     cell.classList.add('active');
+                    cardNumbers.push("FREE");
                 } else {
                     let min = ranges[c][0];
                     let max = ranges[c][1];
                     let num = Math.floor(Math.random() * (max - min + 1)) + min;
+                    // ተደጋጋሚ ቁጥር እንዳይኖር ማድረግ
+                    while(cardNumbers.includes(num)) {
+                        num = Math.floor(Math.random() * (max - min + 1)) + min;
+                    }
                     cell.innerText = num;
+                    cardNumbers.push(num);
                     cell.onclick = function() { this.classList.toggle('active'); };
                 }
                 board.appendChild(cell);
@@ -49,7 +71,12 @@
         }
 
         function claimBingo() {
-            alert("ቢንጎ ብለሃል! ሲስተሙ ቁጥሮችህን እያረጋገጠ ነው...");
+            // ቦቱ ላይ ላለው አድሚን መረጃ ለመላክ
+            tg.sendData(JSON.stringify({
+                action: "claim_bingo",
+                card: cardNumbers
+            }));
+            tg.close(); // ገጹን መዝጋት
         }
     </script>
 </body>
